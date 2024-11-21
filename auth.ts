@@ -2,6 +2,7 @@ import NextAuth, {AdminSession, DefaultSession, Session} from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import axios, {isAxiosError} from "axios";
 import {authorize} from '@/lib/djangoAuth';
+import {getNewBearerToken} from "@/lib/api/Requests";
 
 // type User = Session['user'];
 
@@ -27,7 +28,7 @@ declare module "next-auth" {
     }
 }
 
-export const { auth, handlers } = NextAuth({
+const handler  = NextAuth({
     debug: process.env.NODE_ENV !== "production",
     providers: [
         CredentialsProvider({
@@ -45,21 +46,24 @@ export const { auth, handlers } = NextAuth({
                 }
 
                 const apiUrl = process.env.DJANGO_API_URL || "";
+                console.log('apiUrl');
+                console.log(apiUrl);
 
                 try {
                     // Define the type for the response object
-                    const response = await axios.post<DjangoTokenResponse>(`${apiUrl}/api/token/`, {
-                        username: credentials.username,
-                        password: credentials.password,
-                    });
+                    console.log("YO1")
+                    const response = await getNewBearerToken(apiUrl, credentials.username, credentials.password);
+                    console.log("YO2")
 
-                    const { access } = response.data;
-
+                    const { access } = response;
+                    console.log("YO3")
+                    console.log(access)
                     if (access) {
                         return {
                             name: "Admin",
+                            id: access,
                             accessToken: access,
-                        };
+                        } as AdminSession["user"];
                     }
 
                     return null;
@@ -68,23 +72,19 @@ export const { auth, handlers } = NextAuth({
                     return null;
                 }
 
-
-
-
-
                 // Replace inline logic with the reusable authorize function
-                const user = await authorize(credentials);
-                console.log('WHAT 2')
-                if (!user) {
-                    console.error("Admin login failed.");
-                    return null;
-                }
-
-                // Ensure the returned object matches the AdminSession type
-                return {
-                    id: user.name || "admin",
-                    ...user, // Spread fields from the User type
-                } as AdminSession["user"];
+                // const user = await authorize(credentials);
+                // console.log('WHAT 2')
+                // if (!user) {
+                //     console.error("Admin login failed.");
+                //     return null;
+                // }
+                //
+                // // Ensure the returned object matches the AdminSession type
+                // return {
+                //     id: user.name || "admin",
+                //     ...user, // Spread fields from the User type
+                // } as AdminSession["user"];
             },
         }),
     ],
@@ -92,16 +92,28 @@ export const { auth, handlers } = NextAuth({
         signIn: "/admin/login",
     },
     callbacks: {
+        async redirect({ url, baseUrl }) {
+            // Prevent looping by checking if the URL is already processed
+            console.log("redirect method")
+            console.log("baseUrl " + baseUrl)
+
+            if (url.startsWith(baseUrl) || url.startsWith("/")) {
+                return url;
+            }
+            return baseUrl;
+        },
         async jwt({ token, user }) {
-            // Update the JWT for admin sessions
+            console.log('jwt method')
             if (user && 'id' in user) {
                 token.sub = user.id;
                 token.accessToken = user.accessToken;
+                token.role = 'admin'
             }
             return token;
         },
         async session({ session, token }) {
             // Populate session for admin sessions
+            console.log("YOOOOOOOOOOO")
             if (token.sub && token.accessToken) {
                 session.user = {
                     ...session.user,
@@ -138,3 +150,4 @@ export const { auth, handlers } = NextAuth({
 //
 //     return session;
 // }
+export { handler as GET, handler as POST };

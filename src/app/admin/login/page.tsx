@@ -6,8 +6,19 @@ import {signIn} from "next-auth/react";
 export default function AdminLoginPage() {
 
     const adminLoginAction = async (formData: FormData) => {
-        await signIn("adminLogin", {}, formData);
+        const data: Record<string, string> = {};
+        formData.forEach((value, key) => {
+            data[key] = value.toString();
+        });
+        console.log('WHAT')
+        console.log(data)
+        console.log('data ' + data)
+        console.log('formData ' + formData)
+        // Pass the object as the third argument to signIn
+        await signIn("adminAuth", {callbackUrl: "/admin", redirect: true, ...data});
+        // await signIn("adminLogin", {}, formData);
     }
+    console.log('hi')
 
     return (
         <div className="flex items-center justify-center min-h-screen from-gray-900 to-gray-800 text-gray-300">

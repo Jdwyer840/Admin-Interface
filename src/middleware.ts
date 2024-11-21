@@ -8,6 +8,7 @@ export async function middleware(request: NextRequest) {
     // Only apply middleware for paths that start with /admin
     if (pathname.startsWith('/admin') && (pathname !== '/admin/login' && pathname !== '/admin/login/')) {
         // Retrieve the token from the request
+        console.log("MIDDLEWARE")
         const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
 
         // If no token or role is not admin, redirect to login
